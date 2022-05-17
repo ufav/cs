@@ -1,0 +1,301 @@
+from selenium import webdriver
+from bs4 import BeautifulSoup
+import time
+import random
+import json
+import pandas as pnds
+import re
+
+
+def get_urls():
+    start_time = time.time()
+    urls = []
+    count = 1
+    driver = webdriver.Chrome(executable_path="C:\\Users\\Admin\\PycharmProjects\\betpebet\\chromedriver"
+                                              "\\chromedriver.exe")
+    for page in range(1, 11):
+        url = 'https://www.cybersport.ru/base/match?disciplines=21&status=past&date-from=01.04.2022&date-to=30' \
+              '.04.2022&page=' + str(page)
+        driver.get(url)
+        time.sleep(random.randrange(2, 5))
+        if count % 10 == 0:
+            time.sleep(random.randrange(5, 9))
+        soup = BeautifulSoup(driver.page_source, 'lxml')
+        ass = soup.find_all('a', class_='matches__link revers')
+        for link in ass:
+            urls.append('https://www.cybersport.ru' + link.get('href'))
+        print(urls[-1])
+        print(f'[+] Processed: {round(count / 11 * 100, 2)}')
+        count += 1
+    driver.close()
+    driver.quit()
+    with open('C:\\Users\\Admin\\PycharmProjects\\betpebet\\urls_new.json', 'w', encoding='utf-8') as file:
+        json.dump(urls, file, indent=4, ensure_ascii=False)
+    print(round((time.time() - start_time) / 60, 2))
+    return '[INFO] Data collected successfully'
+
+
+def get_results():
+    start_time = time.time()
+    result_list = []
+    count = 1
+    data = pnds.read_csv('D:\\betpebet\\urlst.csv')
+    urls = list(data.urls_list)
+    driver = webdriver.Chrome(executable_path="C:\\Users\\Admin\\PycharmProjects\\betpebet\\chromedriver"
+                                              "\\chromedriver.exe")
+    for url in urls:
+        driver.get(url)
+        time.sleep(random.randrange(2, 5))
+        if count % 10 == 0:
+            time.sleep(random.randrange(5, 9))
+        soup = BeautifulSoup(driver.page_source, 'lxml')
+        lst = []
+        try:
+            l = soup.find_all('div', 'match-duel-team__name')
+            for t in l:
+                lst.append(t.get_text())
+            h = lst[0]
+            a = lst[1]
+        except Exception as _ex:
+            h = '"{}"'.format(_ex)
+            a = '"{}"'.format(_ex)
+        try:
+            d = soup.find('div', 'match-duel').time.attrs['datetime']
+        except Exception as _ex:
+            d = '"{}"'.format(_ex)
+        lst = []
+        try:
+            l = soup.find_all('div', 'match-duel__item-result')
+            for t in l:
+                lst.append(int(t.get_text()))
+            hr = lst[0]
+            ar = lst[1]
+        except Exception as _ex:
+            hr = '"{}"'.format(_ex)
+            ar = '"{}"'.format(_ex)
+        lst = []
+        l = soup.find_all('div', 'match-duel__item-list')
+        try:
+            l1 = l[0].find_all('div', 'match-duel-player__about-nickname')
+            for t in l1:
+                lst.append(t.get_text())
+            h1 = lst[0]
+            h2 = lst[1]
+            h3 = lst[2]
+            h4 = lst[3]
+            h5 = lst[4]
+            lst = []
+        except Exception as _ex:
+            h1 = '"{}"'.format(_ex)
+            h2 = '"{}"'.format(_ex)
+            h3 = '"{}"'.format(_ex)
+            h4 = '"{}"'.format(_ex)
+            h5 = '"{}"'.format(_ex)
+        try:
+            l2 = l[1].find_all('div', 'match-duel-player__about-nickname')
+            for t in l2:
+                lst.append(t.get_text())
+            a1 = lst[0]
+            a2 = lst[1]
+            a3 = lst[2]
+            a4 = lst[3]
+            a5 = lst[4]
+            lst = []
+        except Exception as _ex:
+            a1 = '"{}"'.format(_ex)
+            a2 = '"{}"'.format(_ex)
+            a3 = '"{}"'.format(_ex)
+            a4 = '"{}"'.format(_ex)
+            a5 = '"{}"'.format(_ex)
+        try:
+            t = soup.find('div', 'match-duel').find('a', class_='revers').text.strip().split('|')
+            t = t[1].strip() + ' | ' + t[3].strip()
+        except Exception as _ex:
+            t = '"{}"'.format(_ex)
+        try:
+            if soup.find('header', class_='tabs__header').find('a', 'tabs__item tabs__item--tab1').text.strip() == 'Карта 1':
+                m = 'y'
+            else:
+                m = 'n'
+        except Exception as _ex:
+            m = 'n'
+        try:
+            mc = soup.find('div', id='match-stasts-tab').find('nav', class_='tabs__navigation').find_all('a')
+            mc = len(mc)
+        except Exception as _ex:
+            mc = '"{}"'.format(_ex)
+            continue
+        stats = dict()
+        for i in range(1, int(mc) + 1):
+            mt = soup.find('section', class_='tabs__content statistic-dota2__content tabs__content--tab' + str(i)) #map tab
+            try:
+                rs = mt.find('div', class_='statistic-dota2__score').find('strong', class_='inverse-color--radiant').get_text() #radiant score
+                ds = mt.find('div', class_='statistic-dota2__score').find('strong', class_='inverse-color--dire').get_text()  #dire score
+                wl = mt.find_all('h4')  #teams
+                for team in wl:
+                    lst.append(team.get_text())
+                if int(rs) > int(ds):
+                    rt = lst[0] #radiant team
+                    dt = lst[1] #dire team
+                else:
+                    dt = lst[0]
+                    rt = lst[1]
+                lst = []
+                try:
+                    dm = mt.find('div', class_='statistic-dota2__time').text.strip()    #duration map
+                    rmh = dict()
+                    sr = mt.find('table', class_='statistic-dota2__tbody radiant').find_all('div', class_='statistic-dota2__hero')
+                    for u in sr[0:5]:
+                        rmh[str(i) + 'rmh%s' % (sr.index(u) + 1)] = re.search('\/\S\S\/(.*)(png|jpg)', str(u)).group(0)
+
+                    rmp = dict()
+                    pr = mt.find('table', class_='statistic-dota2__tbody radiant').find_all('div', class_='cs-tooltip__content')   #players radiant
+                    for u in pr[0:5]:
+                        rmp[str(i) + 'rmp%s' % (pr.index(u) + 1)] = str(u.get_text()).strip()    #radiant map player
+
+                    rmk = dict()
+                    kr = mt.find('table', class_='statistic-dota2__tbody radiant').find_all('td', class_='tabs__content tabs__content--tab1 text-align--center statistic-dota2__info statistic-dota2__info--small')   #kills radiant
+                    for j, u in enumerate(kr):
+                        rmk[str(i) + 'rmk%s' % (j + 1)] = u.get_text().strip()
+
+                    dmh = dict()
+                    sd = mt.find('table', class_='statistic-dota2__tbody dire').find_all('div', class_='statistic-dota2__hero')
+                    for u in sd[0:5]:
+                        dmh[str(i) + 'dmh%s' % (sd.index(u) + 1)] = re.search('\/\S\S\/(.*)(png|jpg)', str(u)).group(0)     #dire map heroe
+
+                    dmp = dict()
+                    pd = mt.find('table', class_='statistic-dota2__tbody dire').find_all('div', class_='cs-tooltip__content')   #players dire
+                    for u in pd[0:5]:
+                        dmp[str(i) + 'dmp%s' % (pd.index(u) + 1)] = str(u.get_text()).strip()    #dire map player
+
+                    dmk = dict()
+                    kd = mt.find('table', class_='statistic-dota2__tbody dire').find_all('td', class_='tabs__content tabs__content--tab1 text-align--center statistic-dota2__info statistic-dota2__info--small')   #kills dire
+                    for j, u in enumerate(kd):
+                        dmk[str(i) + 'dmk%s' % (j + 1)] = u.get_text().strip()   #dire map kills
+
+                except Exception as _ex:
+                    lst = []
+                    print(_ex)
+                    continue
+                #print(url)
+                #print(rt, dt)
+                #print(rs, ds)
+                #print(dm)
+
+                stats.update(
+                    {
+                        str(i) + 'rmh1': rmh[str(i) + 'rmh1'],
+                        str(i) + 'rmh2': rmh[str(i) + 'rmh2'],
+                        str(i) + 'rmh3': rmh[str(i) + 'rmh3'],
+                        str(i) + 'rmh4': rmh[str(i) + 'rmh4'],
+                        str(i) + 'rmh5': rmh[str(i) + 'rmh5'],
+                        str(i) + 'rmp1': rmp[str(i) + 'rmp1'],
+                        str(i) + 'rmp2': rmp[str(i) + 'rmp2'],
+                        str(i) + 'rmp3': rmp[str(i) + 'rmp3'],
+                        str(i) + 'rmp4': rmp[str(i) + 'rmp4'],
+                        str(i) + 'rmp5': rmp[str(i) + 'rmp5'],
+                        str(i) + 'rmk1': rmk[str(i) + 'rmk1'],
+                        str(i) + 'rmk2': rmk[str(i) + 'rmk4'],
+                        str(i) + 'rmk3': rmk[str(i) + 'rmk7'],
+                        str(i) + 'rmk4': rmk[str(i) + 'rmk10'],
+                        str(i) + 'rmk5': rmk[str(i) + 'rmk13'],
+                        str(i) + 'rmd1': rmk[str(i) + 'rmk2'],
+                        str(i) + 'rmd2': rmk[str(i) + 'rmk5'],
+                        str(i) + 'rmd3': rmk[str(i) + 'rmk8'],
+                        str(i) + 'rmd4': rmk[str(i) + 'rmk11'],
+                        str(i) + 'rmd5': rmk[str(i) + 'rmk14'],
+                        str(i) + 'dmh1': dmh[str(i) + 'dmh1'],
+                        str(i) + 'dmh2': dmh[str(i) + 'dmh2'],
+                        str(i) + 'dmh3': dmh[str(i) + 'dmh3'],
+                        str(i) + 'dmh4': dmh[str(i) + 'dmh4'],
+                        str(i) + 'dmh5': dmh[str(i) + 'dmh5'],
+                        str(i) + 'dmp1': dmp[str(i) + 'dmp1'],
+                        str(i) + 'dmp2': dmp[str(i) + 'dmp2'],
+                        str(i) + 'dmp3': dmp[str(i) + 'dmp3'],
+                        str(i) + 'dmp4': dmp[str(i) + 'dmp4'],
+                        str(i) + 'dmp5': dmp[str(i) + 'dmp5'],
+                        str(i) + 'dmk1': dmk[str(i) + 'dmk1'],
+                        str(i) + 'dmk2': dmk[str(i) + 'dmk4'],
+                        str(i) + 'dmk3': dmk[str(i) + 'dmk7'],
+                        str(i) + 'dmk4': dmk[str(i) + 'dmk10'],
+                        str(i) + 'dmk5': dmk[str(i) + 'dmk13'],
+                        str(i) + 'dmd1': dmk[str(i) + 'dmk2'],
+                        str(i) + 'dmd2': dmk[str(i) + 'dmk5'],
+                        str(i) + 'dmd3': dmk[str(i) + 'dmk8'],
+                        str(i) + 'dmd4': dmk[str(i) + 'dmk11'],
+                        str(i) + 'dmd5': dmk[str(i) + 'dmk14']
+                    }
+                )
+            except Exception as _ex:
+                print(_ex)
+                continue
+
+            rmh.clear()
+            dmh.clear()
+            rmp.clear()
+            dmp.clear()
+            rmk.clear()
+            dmk.clear()
+
+        result_list.append(
+            {
+                'home': h,
+                'away': a,
+                'datetime': d,
+                'home score': hr,
+                'away score': ar,
+                'home 1': h1,
+                'home 2': h2,
+                'home 3': h3,
+                'home 4': h4,
+                'home 5': h5,
+                'away 1': a1,
+                'away 2': a2,
+                'away 3': a3,
+                'away 4': a4,
+                'away 5': a5,
+                'tournament': t,
+                'has_map': m,
+                'url': url,
+                'maps count': mc,
+                'stats': stats
+            }
+        )
+        #print(result_list)
+        print(result_list[-1])
+        print(f'[+] Processed: {round(count / len(urls) * 100, 2)}')
+        count += 1
+
+    driver.close()
+    driver.quit()
+    stats.clear()
+    with open('C:\\Users\\Admin\\PycharmProjects\\betpebet\\test.json', 'w', encoding='utf-8') as file:
+        json.dump(result_list, file, indent=4, ensure_ascii=False)
+    print(round((time.time() - start_time) / 60, 2))
+    return '[INFO] Data collected successfully'
+
+
+def re1():
+    lst = []
+    t = 'background-image: url(https://svirtus.cdnvideo.ru/3vFrv96ScgQBKighcEaU-OaDg4Q=/0x0:127x71/60x33/filters:quality(100)/https://hb.bizmrg.com/esports-core-media/a6/a6640a5654ee1b0be70a6b80e04cdc77.png?m=61c606641dff0be3a932e59915fda77a);'
+    lst.append(re.search('\/\S\S\/(.*)png', t).group(0))
+    print(lst)
+
+
+def dynamic_var():
+    d = dict()
+    l = ['marlen', 'karimov', 'erbulatovich']
+    for i in l:
+        d['num_%s' % (l.index(i) + 1)] = i
+    print(d)
+
+
+def main():
+    #get_urls()
+    get_results()
+    #re1()
+    #dynamic_var()
+
+
+if __name__ == '__main__':
+    main()
