@@ -1,22 +1,28 @@
 from selenium import webdriver
 from bs4 import BeautifulSoup
+import datetime
 import time
 import random
 import json
 import pandas as pnds
 import re
 import hashlib
+import csv
 
 
 def get_urls():
     start_time = time.time()
     urls = []
     count = 1
-    driver = webdriver.Chrome(executable_path="C:\\Users\\Admin\\PycharmProjects\\betpebet\\chromedriver"
-                                              "\\chromedriver.exe")
-    for page in range(1, 18):
-        url = 'https://www.cybersport.ru/base/match?disciplines=21&status=past&date-from=01.01.2019&date-to=31' \
-              '.01.2019&page=' + str(page)
+    driver = webdriver.Chrome(
+        executable_path="C:\\Users\\Admin\\PycharmProjects\\betpebet\\chromedriver\\chromedriver.exe")
+    url = 'https://www.cybersport.ru/base/match?disciplines=21&status=past&date-from=01.03.2019&date-to=31.03.2019'
+    driver.get(url)
+    soup = BeautifulSoup(driver.page_source, 'lxml')
+    p = soup.find_all('a', class_='pagination__item')[-2].text
+    pages_count = int(p)
+    for page in range(1, pages_count):
+        url = url + '&page=' + str(page)
         driver.get(url)
         time.sleep(random.randrange(2, 5))
         if count % 10 == 0:
@@ -26,7 +32,7 @@ def get_urls():
         for link in ass:
             urls.append('https://www.cybersport.ru' + link.get('href'))
         print(urls[-1])
-        print(f'[+] Processed: {round(count / 11 * 100, 2)}')
+        print(f'[+] Processed: {round(count / pages_count * 100, 2)}')
         count += 1
     driver.close()
     driver.quit()
@@ -40,12 +46,21 @@ def get_results():
     start_time = time.time()
     result_list = []
     count = 1
-    data = pnds.read_csv('D:\\betpebet\\urlst.csv')
+    data = pnds.read_csv('D:\\betpebet\\urls.csv')
     urls = list(data.urls_list)
     driver = webdriver.Chrome(executable_path="C:\\Users\\Admin\\PycharmProjects\\betpebet\\chromedriver"
                                               "\\chromedriver.exe")
     for url in urls:
-        driver.get(url)
+        try:
+            driver.get(url)
+        except Exception as _ex:
+            result_list.append(
+                {
+                    'home': _ex,
+                    'url': url
+                }
+            )
+            continue
         time.sleep(random.randrange(2, 5))
         if count % 10 == 0:
             time.sleep(random.randrange(5, 9))
@@ -114,7 +129,8 @@ def get_results():
         except Exception as _ex:
             t = '"{}"'.format(_ex)
         try:
-            if soup.find('header', class_='tabs__header').find('a', 'tabs__item tabs__item--tab1').text.strip() == 'Карта 1':
+            if soup.find('header', class_='tabs__header').find('a',
+                                                               'tabs__item tabs__item--tab1').text.strip() == 'Карта 1':
                 m = 'y'
             else:
                 m = 'n'
@@ -128,64 +144,88 @@ def get_results():
             continue
         stats = dict()
         for i in range(1, int(mc) + 1):
-            mt = soup.find('section', class_='tabs__content statistic-dota2__content tabs__content--tab' + str(i)) #map tab
+            mt = soup.find('section',
+                           class_='tabs__content statistic-dota2__content tabs__content--tab' + str(i))  # map tab
             try:
-                rs = mt.find('div', class_='statistic-dota2__score').find('strong', class_='inverse-color--radiant').get_text() #radiant score
-                ds = mt.find('div', class_='statistic-dota2__score').find('strong', class_='inverse-color--dire').get_text()  #dire score
-                wl = mt.find_all('h4')  #teams
+                rs = mt.find('div', class_='statistic-dota2__score').find('strong',
+                                                                          class_='inverse-color--radiant').get_text()  # radiant score
+                ds = mt.find('div', class_='statistic-dota2__score').find('strong',
+                                                                          class_='inverse-color--dire').get_text()  # dire score
+                wl = mt.find_all('h4')  # teams
                 for team in wl:
                     lst.append(team.get_text())
                 if int(rs) > int(ds):
-                    rt = lst[0] #radiant team
-                    dt = lst[1] #dire team
+                    rt = lst[0]  # radiant team
+                    dt = lst[1]  # dire team
                 else:
                     dt = lst[0]
                     rt = lst[1]
                 lst = []
                 try:
-                    dm = mt.find('div', class_='statistic-dota2__time').text.strip()    #duration map
+                    dm = mt.find('div', class_='statistic-dota2__time').text.strip().replace('м ', ':').replace('с',
+                                                                                                                '').split(
+                        ':')  # duration map
+                    dm = str(datetime.timedelta(seconds=int(dm[0]) * 60 + int(dm[1])))
                     rmh = dict()
-                    sr = mt.find('table', class_='statistic-dota2__tbody radiant').find_all('div', class_='statistic-dota2__hero')
+                    sr = mt.find('table', class_='statistic-dota2__tbody radiant').find_all('div',
+                                                                                            class_='statistic-dota2__hero')
                     for u in sr[0:5]:
-                        rmh[str(i) + 'rmh%s' % (sr.index(u) + 1)] = re.search('\/\S\S\/(.*)(png|jpg)', str(u)).group(0)
+                        with open('D:\\betpebet\\heroes.csv') as f:  # load csv heroes
+                            reader = csv.reader(f, delimiter=';')
+                            for row in reader:
+                                if row[0] == re.search('\/\S\S\/(.*)(png|jpg)', str(u)).group(0):
+                                    rmh[str(i) + 'rmh%s' % (sr.index(u) + 1)] = row[1]
+                        f.close()
+                        # rmh[str(i) + 'rmh%s' % (sr.index(u) + 1)] = re.search('\/\S\S\/(.*)(png|jpg)', str(u)).group(0)
 
                     rmp = dict()
-                    pr = mt.find('table', class_='statistic-dota2__tbody radiant').find_all('div', class_='cs-tooltip__content')   #players radiant
+                    pr = mt.find('table', class_='statistic-dota2__tbody radiant').find_all('div',
+                                                                                            class_='cs-tooltip__content')  # players radiant
                     for j, u in enumerate(pr[0:5]):
                         rmp[str(i) + 'rmp%s' % (j + 1)] = str(u.get_text()).strip()
-                    #for u in pr[0:5]:
+                    # for u in pr[0:5]:
                     #    rmp[str(i) + 'rmp%s' % (pr.index(u) + 1)] = str(u.get_text()).strip()    #radiant map player
 
                     rmk = dict()
-                    kr = mt.find('table', class_='statistic-dota2__tbody radiant').find_all('td', class_='tabs__content tabs__content--tab1 text-align--center statistic-dota2__info statistic-dota2__info--small')   #kills radiant
+                    kr = mt.find('table', class_='statistic-dota2__tbody radiant').find_all('td',
+                                                                                            class_='tabs__content tabs__content--tab1 text-align--center statistic-dota2__info statistic-dota2__info--small')  # kills radiant
                     for j, u in enumerate(kr):
                         rmk[str(i) + 'rmk%s' % (j + 1)] = u.get_text().strip()
 
                     dmh = dict()
-                    sd = mt.find('table', class_='statistic-dota2__tbody dire').find_all('div', class_='statistic-dota2__hero')
+                    sd = mt.find('table', class_='statistic-dota2__tbody dire').find_all('div',
+                                                                                         class_='statistic-dota2__hero')
                     for u in sd[0:5]:
-                        dmh[str(i) + 'dmh%s' % (sd.index(u) + 1)] = re.search('\/\S\S\/(.*)(png|jpg)', str(u)).group(0)     #dire map heroe
+                        with open('D:\\betpebet\\heroes.csv') as f:  # load csv heroes
+                            reader = csv.reader(f, delimiter=';')
+                            for row in reader:
+                                if row[0] == re.search('\/\S\S\/(.*)(png|jpg)', str(u)).group(0):
+                                    dmh[str(i) + 'dmh%s' % (sd.index(u) + 1)] = row[1]
+                        f.close()
+                        # dmh[str(i) + 'dmh%s' % (sd.index(u) + 1)] = re.search('\/\S\S\/(.*)(png|jpg)', str(u)).group(0)     #dire map heroe
 
                     dmp = dict()
-                    pd = mt.find('table', class_='statistic-dota2__tbody dire').find_all('div', class_='cs-tooltip__content')   #players dire
+                    pd = mt.find('table', class_='statistic-dota2__tbody dire').find_all('div',
+                                                                                         class_='cs-tooltip__content')  # players dire
                     for j, u in enumerate(pd[0:5]):
                         dmp[str(i) + 'dmp%s' % (j + 1)] = str(u.get_text()).strip()
-                    #for u in pd[0:5]:
+                    # for u in pd[0:5]:
                     #    dmp[str(i) + 'dmp%s' % (pd.index(u) + 1)] = str(u.get_text()).strip()    #dire map player
 
                     dmk = dict()
-                    kd = mt.find('table', class_='statistic-dota2__tbody dire').find_all('td', class_='tabs__content tabs__content--tab1 text-align--center statistic-dota2__info statistic-dota2__info--small')   #kills dire
+                    kd = mt.find('table', class_='statistic-dota2__tbody dire').find_all('td',
+                                                                                         class_='tabs__content tabs__content--tab1 text-align--center statistic-dota2__info statistic-dota2__info--small')  # kills dire
                     for j, u in enumerate(kd):
-                        dmk[str(i) + 'dmk%s' % (j + 1)] = u.get_text().strip()   #dire map kills
+                        dmk[str(i) + 'dmk%s' % (j + 1)] = u.get_text().strip()  # dire map kills
 
                 except Exception as _ex:
                     lst = []
                     stats.update(_ex)
                     continue
-                #print(url)
-                #print(rt, dt)
-                #print(rs, ds)
-                #print(dm)
+                # print(url)
+                # print(rt, dt)
+                # print(rs, ds)
+                # print(dm)
 
                 stats.update(
                     {
@@ -272,7 +312,7 @@ def get_results():
                 'stats': stats
             }
         )
-        #print(result_list)
+        # print(result_list)
         print(result_list[-1])
         print(f'[+] Processed: {round(count / len(urls) * 100, 2)}')
         count += 1
@@ -305,12 +345,29 @@ def get_hash():
     print(hashlib.md5("whatever your string is".encode('utf-8')).hexdigest())
 
 
+def csv_to_dict():
+    f = open('D:\\betpebet\\heroes.csv')
+    reader = csv.reader(f, delimiter=';')
+    for row in reader:
+        if row[0] == '/c3/c369f7609509e4d69148a888f1ac6614.png':
+            print(row[1])
+            print(row[0])
+
+    # data = pnds.read_csv('D:\\betpebet\\heroes.csv')
+    # heroes = dict(data)
+    # print(heroes)
+
+    # dict_from_csv = pnds.read_csv('D:\\betpebet\\heroes.csv').to_dict()
+    # print(dict_from_csv)
+
+
 def main():
-    #get_urls()
+    # get_urls()
     get_results()
-    #re1()
-    #dynamic_var()
-    #get_hash()
+    # re1()
+    # dynamic_var()
+    # get_hash()
+    # csv_to_dict()
 
 
 if __name__ == '__main__':
