@@ -1,0 +1,55 @@
+from selenium import webdriver
+from bs4 import BeautifulSoup
+import datetime
+import time
+import random
+import json
+import pandas as pnds
+import re
+import hashlib
+import csv
+import requests
+import os
+
+
+def get_urls():
+    driver = webdriver.Chrome(executable_path="C:\\Users\\Admin\\PycharmProjects\\betpebet\\chromedriver\\chromedriver.exe")
+    url = 'https://www.cybersport.ru/matches/dota-2/10056319'
+    driver.get(url)
+    elements = driver.find_elements_by_xpath("//div[starts-with(@class, 'card_')]")
+    for element in elements:
+        element.click()
+        soup = BeautifulSoup(driver.page_source, 'lxml')
+        for s in soup.select('script'):
+            s.extract()
+        my_file = open('D:\\newData\\betpebet\\cybersport\\results\\2021\\file' + str(elements.index(element)) + '.txt', 'w')
+        my_file.write(str(soup))
+        my_file.close()
+
+
+    #driver.close()
+    #driver.quit()
+
+    #print(response.text.split('<script>window')[0])
+
+    #my_file = open('file.txt', 'w')
+    #my_file.write(soup.text)
+    #my_file.close()
+
+    print(soup)
+
+def get_results():
+    pass
+
+
+def get_results():
+    os.mkdir('D:\\newData\\betpebet\\cybersport\\results\\2021\\' + '2316')
+
+
+def main():
+    get_urls()
+    #get_results()
+
+
+if __name__ == '__main__':
+    main()
