@@ -15,7 +15,7 @@ def get_urls():
     urls = []
     count = 1
     driver = webdriver.Chrome(executable_path="C:\\Users\\Admin\\PycharmProjects\\betpebet\\chromedriver\\chromedriver.exe")
-    url = 'https://www.cybersport.ru/base/match?disciplines=21&status=past&date-from=01.05.2019&date-to=31.12.2019'
+    url = 'https://www.cybersport.ru/matches/dota-2?date=2021-01-04'
     driver.get(url)
     soup = BeautifulSoup(driver.page_source, 'lxml')
     p = soup.find_all('a', class_='pagination__item')[-2].text
@@ -191,6 +191,11 @@ def get_results():
 
                 except Exception as _ex:
                     lst = []
+                    stats.update(
+                        {
+                            str(i) + 'rmh1': '"{}"'.format(_ex)
+                        }
+                    )
                     print('"{}"'.format(_ex))
                     continue
                 # print(url)
@@ -334,8 +339,8 @@ def csv_to_dict():
 
 
 def main():
-    get_urls()
-    #get_results()
+    #get_urls()
+    get_results()
     # re1()
     # dynamic_var()
     # get_hash()
