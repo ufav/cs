@@ -8,22 +8,9 @@ from sklearn.metrics import accuracy_score
 
 def get_data():
     data = pd.read_csv('D:\\betpebet\\results\\2019copy1.csv', delimiter=';').astype(float)
-    #data = data.drop(['PassengerId', 'Name', 'Ticket'], axis=1)
     y = data['wl']
     data = data.drop(['wl'], axis=1)
-        #print(data.columns)
     print(data.dtypes)
-        #data.columns[data.isna().any()].tolist()
-        #plt.scatter(data['Age'], data['Parch'])
-        #data['Age'].mean()
-    #data['Age'] = data['Age'].fillna(28)
-    #data['Embarked'] = data['Embarked'].fillna('S')
-        #print(data['Cabin'].isna().sum(), len(data))
-    #data = data.drop(['Cabin'], axis=1)
-        #print(data['Sex'].describe())
-    #data['Sex'] = data['Sex'].astype('category')
-    #data['Sex'] = data['Sex'].cat.codes
-    #data = pd.get_dummies(data, columns=['Embarked'])
 
     train_data, val_data, train_y, val_y = train_test_split(data, y, test_size=0.3)
     knn = KNeighborsClassifier(n_neighbors=3)
