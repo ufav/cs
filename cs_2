@@ -13,16 +13,56 @@ import os
 
 
 def get_urls():
+    start_date = '2021-02-01'
+    end_date = '2021-02-28'
+    daterange = pnds.date_range(start_date, end_date)
+    s = pnds.to_datetime(start_date)
+    e = pnds.to_datetime(end_date)
+    start_time = time.time()
+    urls = []
+    count = 1
+    driver = webdriver.Chrome(executable_path="C:\\Users\\Admin\\PycharmProjects\\betpebet\\chromedriver\\chromedriver.exe")
+    for single_date in daterange:
+        driver.get('https://www.cybersport.ru/api/matches?sort=-date&filter[disciplineIds]=21&filter[isFinished]=true&filter[date]=' + single_date.strftime("%Y-%m-%d"))
+        time.sleep(random.randrange(2, 5))
+        if count % 10 == 0:
+            time.sleep(random.randrange(5, 9))
+        soup = BeautifulSoup(driver.page_source, 'lxml')
+        urls_json = json.loads(soup.text)
+        for id in urls_json['data']:
+            urls.append(id['id'])
+        try:
+            print(urls[-1])
+        except:
+            continue
+        finally:
+            print(f'[+] Processed: {round(count / (int(str(e - s).split(" ")[0]) + 1) * 100, 2)}')
+            count += 1
+    driver.close()
+    driver.quit()
+    with open('D:\\newData\\betpebet\\cybersport\\results\\2021\\urls_may.json', 'w', encoding='utf-8') as file:
+        json.dump(urls, file, indent=4, ensure_ascii=False)
+    #for url in urls:
+    #    with open('D:\\newData\\betpebet\\cybersport\\results\\2021\\urls_may.csv', 'a') as file:
+    #        writer = csv.writer(file)
+    #        writer.writerow(url)
+    print(round((time.time() - start_time) / 60, 2))
+    return '[INFO] Data collected successfully'
+
+
+def get_data():
+
     driver = webdriver.Chrome(executable_path="C:\\Users\\Admin\\PycharmProjects\\betpebet\\chromedriver\\chromedriver.exe")
     url = 'https://www.cybersport.ru/matches/dota-2/10056319'
     driver.get(url)
+    os.mkdir('D:\\newData\\betpebet\\cybersport\\results\\2021\\' + url.split('/')[-1])
     elements = driver.find_elements_by_xpath("//div[starts-with(@class, 'card_')]")
     for element in elements:
         element.click()
         soup = BeautifulSoup(driver.page_source, 'lxml')
         for s in soup.select('script'):
             s.extract()
-        my_file = open('D:\\newData\\betpebet\\cybersport\\results\\2021\\file' + str(elements.index(element)) + '.txt', 'w')
+        my_file = open('D:\\newData\\betpebet\\cybersport\\results\\2021\\' + url.split('/')[-1] + '\\f' + str(elements.index(element) + 1) + '.txt', 'w')
         my_file.write(str(soup))
         my_file.close()
 
@@ -42,12 +82,25 @@ def get_results():
     pass
 
 
-def get_results():
+def make_directory():
     os.mkdir('D:\\newData\\betpebet\\cybersport\\results\\2021\\' + '2316')
+
+
+def dates():
+    start_date = '2022-05-01'
+    end_date = '2022-05-02'
+    s = pnds.to_datetime(start_date)
+    e = pnds.to_datetime(end_date)
+    daterange = pnds.date_range(start_date, end_date)
+    #for single_date in daterange:
+    #    print(single_date.strftime("%Y-%m-%d"))
+    print(str(e - s).split(' ')[0])
 
 
 def main():
     get_urls()
+    #get_data()
+    #dates()
     #get_results()
 
 
