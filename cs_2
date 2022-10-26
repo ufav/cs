@@ -13,8 +13,8 @@ import os
 
 
 def get_urls():
-    start_date = '2021-02-01'
-    end_date = '2021-02-28'
+    start_date = '2022-10-16'
+    end_date = '2022-10-25'
     daterange = pnds.date_range(start_date, end_date)
     s = pnds.to_datetime(start_date)
     e = pnds.to_datetime(end_date)
@@ -40,7 +40,7 @@ def get_urls():
             count += 1
     driver.close()
     driver.quit()
-    with open('D:\\newData\\betpebet\\cybersport\\results\\2021\\urls_may.json', 'w', encoding='utf-8') as file:
+    with open('D:\\newData\\betpebet\\cybersport\\results\\urls_.json', 'w', encoding='utf-8') as file:
         json.dump(urls, file, indent=4, ensure_ascii=False)
     #for url in urls:
     #    with open('D:\\newData\\betpebet\\cybersport\\results\\2021\\urls_may.csv', 'a') as file:
@@ -51,32 +51,69 @@ def get_urls():
 
 
 def get_data():
-
+    year = '2022'
+    start_time = time.time()
+    result_list = []
+    count = 1
+    data = pnds.read_csv('D:\\newData\\betpebet\\cybersport\\results\\' + year + '\\' + year + '.csv')
+    matches = list(data.urls_list)
     driver = webdriver.Chrome(executable_path="C:\\Users\\Admin\\PycharmProjects\\betpebet\\chromedriver\\chromedriver.exe")
-    url = 'https://www.cybersport.ru/matches/dota-2/10056319'
-    driver.get(url)
-    os.mkdir('D:\\newData\\betpebet\\cybersport\\results\\2021\\' + url.split('/')[-1])
-    elements = driver.find_elements_by_xpath("//div[starts-with(@class, 'card_')]")
-    for element in elements:
-        element.click()
+    for matchid in matches:
+        url = 'https://www.cybersport.ru/matches/dota-2/' + str(matchid)
+        driver.get(url)
+        time.sleep(random.randrange(2, 5))
+        if count % 10 == 0:
+            time.sleep(random.randrange(5, 9))
+        os.mkdir('D:\\newData\\betpebet\\cybersport\\results\\' + year + '\\' + str(matchid))
         soup = BeautifulSoup(driver.page_source, 'lxml')
-        for s in soup.select('script'):
-            s.extract()
-        my_file = open('D:\\newData\\betpebet\\cybersport\\results\\2021\\' + url.split('/')[-1] + '\\f' + str(elements.index(element) + 1) + '.txt', 'w')
-        my_file.write(str(soup))
-        my_file.close()
+        if 'matchStatsDota' in str(soup):
+            elements = driver.find_elements_by_xpath("//div[starts-with(@class, 'card_')]")
+            scroll = driver.find_elements_by_xpath("//div[starts-with(@class, 'scroll-btn scroll-btn--right scroll-btn--squar')]")
+            for element in elements:
+                driver.execute_script("arguments[0].click();", element)
+                soup = BeautifulSoup(driver.page_source, 'lxml')
+                for s in soup.select('script'):
+                    s.extract()
+                my_file = open('D:\\newData\\betpebet\\cybersport\\results\\' + year + '\\' + str(matchid) + '\\f' + str(elements.index(element) + 1) + '.txt', 'w', encoding="utf-8")
+                my_file.write(str(soup))
+                my_file.close()
+        else:
+            for s in soup.select('script'):
+                s.extract()
+            my_file = open('D:\\newData\\betpebet\\cybersport\\results\\' + year + '\\' + str(matchid) + '\\f0.txt', 'w', encoding="utf-8")
+            my_file.write(str(soup))
+            my_file.close()
+        print(f'[+] Processed: {round(count / len(matches) * 100, 2)}')
+        count += 1
+
+    driver.close()
+    driver.quit()
+    print(round((time.time() - start_time) / 60, 2))
+    return '[INFO] Data collected successfully'
 
 
-    #driver.close()
-    #driver.quit()
+def dataCollect():
+    folders = os.listdir('D:\\newData\\betpebet\\cybersport\\results\\2013')
+    for folder in folders:
+        with open('D:\\newData\\betpebet\\cybersport\\results\\2013\\' + folder + '\\f0.txt', 'r', encoding='utf8') as f:
+            html = f.read()
+            soup = BeautifulSoup(html, 'lxml')
+            for s in soup.select('svg'):
+                s.extract()
+            for s in soup.select('path'):
+                s.extract()
+            match_header = soup.find('div', class_ = re.compile('^rounded-block matchInfo_'))
+            t1 = match_header.find_all('div', class_ = re.compile('^participantTitle'))[0].text.strip()
+            t2 = match_header.find_all('div', class_ = re.compile('^participantTitle'))[1].text.strip()
+            ts = match_header.find('div', class_=re.compile('^matchScore')).get_text().strip()
+            t1s = ts.split(':')[0]
+            t2s = ts.split(':')[1]
+            ed = match_header.find('div', class_=re.compile('^matchTime')).get_text().replace(' в ', ' ').strip()
+            t = match_header.find('small').get_text().strip()
+            r = match_header.find('a', class_=re.compile('^matchSubtitle')).get_text().strip()
+            bo = match_header.find('div', class_=re.compile('^matchFormat')).get_text().strip()
+            print(bo)
 
-    #print(response.text.split('<script>window')[0])
-
-    #my_file = open('file.txt', 'w')
-    #my_file.write(soup.text)
-    #my_file.close()
-
-    print(soup)
 
 def get_results():
     pass
@@ -97,9 +134,24 @@ def dates():
     print(str(e - s).split(' ')[0])
 
 
+def get_data1():
+    driver = webdriver.Chrome(executable_path="C:\\Users\\Admin\\PycharmProjects\\betpebet\\chromedriver\\chromedriver.exe")
+    url = 'https://www.cybersport.ru/matches/dota-2/55401'
+    driver.get(url)
+    soup = BeautifulSoup(driver.page_source, 'lxml')
+    for s in soup.select('script'):
+        s.extract()
+    print(soup)
+
+    driver.close()
+    driver.quit()
+
+
 def main():
-    get_urls()
+    #get_urls()
     #get_data()
+    dataCollect()
+    #get_data1()
     #dates()
     #get_results()
 
